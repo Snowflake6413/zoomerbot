@@ -47,7 +47,7 @@ def welcome_to_the_channel(event, say, client):
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": f"Hi, <@{user_id}> :aga:! Welcome to Alex's channel! Plz enjoy your stay! :meow_code: This Padlet is like a kanban board. It's like a Todo list!"
+				"text": f"Hi, <@{user_id}> :aga:! Welcome to Alex's channel! Plz enjoy your stay! :meow_code:"
 			}
 		},
 		{
