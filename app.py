@@ -148,8 +148,9 @@ def handle_padlet_cmd(ack, respond, command):
  respond(blocks=blocks)
 
 @app.command("/factoftheday")
-def fact_of_the_day(ack, say, command):
+def fact_of_the_day(ack, say, command, event):
  ack()
+ user_id = event["user"]
  response = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/today")
 
  if response.status_code == 200:
@@ -163,7 +164,7 @@ def fact_of_the_day(ack, say, command):
 			"type": "section",
 			"text": {
 				"type": "plain_text",
-				"text": "Here is your fact for today.",
+				"text": f"Here is your fact for today, <@{user_id}>.",
 				"emoji": True
 			}
 		},
