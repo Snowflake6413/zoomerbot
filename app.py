@@ -33,9 +33,14 @@ mod_client = OpenAI(
 app = App(token=SLACK_BOT_TOKEN)
 
 @app.event("member_joined_channel")
-def welcome_to_the_channel(event, say):
+def welcome_to_the_channel(event, say, client):
     user_id = event["user"]
     padlet_url = "https://padlet.com/vvvrrrrvrr/alex-s-ideas-and-things-s4nym2jtp3dthauj"
+    bot_info = client.auth_test()
+    bot_user_id = bot_info["user_id"]
+    
+    if user_id == bot_user_id:
+        return
     blocks = [
         
 		{
