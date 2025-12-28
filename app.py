@@ -7,6 +7,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -50,7 +51,7 @@ def get_bot_user_id(client):
             bot_info = client.auth_test()
             _bot_user_id_cache = bot_info["user_id"]
         except Exception as e:
-            logging.error(f"Failed to get bot user ID: {e}")
+            logger.error(f"Failed to get bot user ID: {e}")
             # Return None to allow the caller to handle the error
             return None
     return _bot_user_id_cache
