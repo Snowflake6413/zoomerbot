@@ -12,6 +12,7 @@ load_dotenv()
 
 print("Running")
 
+# Environment variables
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 SLACK_APP_TOKEN = os.getenv('SLACK_APP_TOKEN')
 OAI_BASE_URL = os.getenv("OAI_BASE_URL")
@@ -19,6 +20,12 @@ OAI_KEY = os.getenv("OAI_KEY")
 MODERATION_BASE_URL = os.getenv("MODERATION_BASE_URL")
 MODERATION_KEY = os.getenv("MODERATION_KEY")
 LLM_MODEL = os.getenv("LLM_MODEL")
+
+# Constants
+PADLET_URL = "https://padlet.com/vvvrrrrvrr/alex-s-ideas-and-things-s4nym2jtp3dthauj"
+ALEX_USER_ID = "U09PHG7RLGG"
+HTTP_TIMEOUT = 10  # seconds
+MAX_CONVERSATION_HISTORY = 10
 
 txt_client = OpenAI(
    base_url = OAI_BASE_URL,
@@ -32,12 +39,21 @@ mod_client = OpenAI(
 
 app = App(token=SLACK_BOT_TOKEN)
 
+# Cache bot user ID to avoid repeated API calls
+_bot_user_id_cache = None
+
+def get_bot_user_id(client):
+    """Get bot user ID with caching to avoid repeated API calls."""
+    global _bot_user_id_cache
+    if _bot_user_id_cache is None:
+        bot_info = client.auth_test()
+        _bot_user_id_cache = bot_info["user_id"]
+    return _bot_user_id_cache
+
 @app.event("member_joined_channel")
 def welcome_to_the_channel(event, say, client):
     user_id = event["user"]
-    padlet_url = "https://padlet.com/vvvrrrrvrr/alex-s-ideas-and-things-s4nym2jtp3dthauj"
-    bot_info = client.auth_test()
-    bot_user_id = bot_info["user_id"]
+    bot_user_id = get_bot_user_id(client)
     
     if user_id == bot_user_id:
         return
@@ -82,7 +98,7 @@ def welcome_to_the_channel(event, say, client):
 						"text": "OPEN THE PADLET!! :rac_wtf:",
 						"emoji": True
 					},
-					"url": padlet_url,
+					"url": PADLET_URL,
 					"action_id": "visit_padlet"
 				},
 				{
@@ -110,11 +126,9 @@ def handle_ping_alex(ack, body, client):
     clicker = body["user"]["id"]
     channel_id = body["channel"]["id"]
     
-    alex_user_id = "U09PHG7RLGG"
-    
     client.chat_postMessage(
         channel = channel_id,
-        text=f"<@{alex_user_id}>! You have been summoned by <@{clicker}>"
+        text=f"<@{ALEX_USER_ID}>! You have been summoned by <@{clicker}>"
     )
 
 @app.command("/padlet")
@@ -138,7 +152,7 @@ def handle_padlet_cmd(ack, respond, command):
                         "text": "OPEN THE PADLET!! :rac_wtf:",
                         "emoji": True
                     },
-                    "url": "https://padlet.com/vvvrrrrvrr/alex-s-ideas-and-things-s4nym2jtp3dthauj",
+                    "url": PADLET_URL,
                     "action_id": "visit_padlet_cmd"
                 }
             ]
@@ -150,11 +164,26 @@ def handle_padlet_cmd(ack, respond, command):
 @app.command("/factoftheday")
 def fact_of_the_day(ack, say, command, event):
  ack()
- response = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/today")
+ try:
+  response = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/today", timeout=HTTP_TIMEOUT)
+  response.raise_for_status()
+ except requests.RequestException as e:
+  say({
+      "blocks": [
+          {
+              "type": "section",
+              "text": {
+                  "type": "plain_text",
+                  "text": "Sorry, I couldn't fetch a fact right now. Please try again later.",
+                  "emoji": True
+              }
+          }
+      ]
+  })
+  return
 
- if response.status_code == 200:
-  data = response.json()
- fact = data['text']
+ data = response.json()
+ fact = data.get('text', 'No fact available')
 
  say(
     {
@@ -181,9 +210,6 @@ def fact_of_the_day(ack, say, command, event):
 
 @app.event("app_mention")
 def ai_mention(client, event, say, logger):
-    logger.info("hello steven")
-    print("hi steven")
-    logger.info(event)
     user_msg = event['text']
     thread_ts = event.get("thread_ts", event["ts"])
     channel_id = event["channel"]
@@ -196,7 +222,7 @@ def ai_mention(client, event, say, logger):
             name="thought_balloon"
         )
     except Exception as e:
-        print("Unable to add reaction")
+        logger.warning(f"Unable to add reaction: {e}")
     
     try:
         moderation = mod_client.moderations.create(input=user_msg)
@@ -210,7 +236,7 @@ def ai_mention(client, event, say, logger):
         mem = client.conversations_replies(
             channel=channel_id,
             ts=thread_ts,
-            limit=10
+            limit=MAX_CONVERSATION_HISTORY
         )
         mem_data = mem['messages']
         
@@ -247,7 +273,8 @@ If the user asks a complex question, give a correct answer but phrase it like it
         say(text=ai_reply, thread_ts=thread_ts)
         
     except Exception as e:
-        say(text=f"Oops! Unable to get a response from OpenAI. {e}", thread_ts=thread_ts)
+        logger.error(f"Error generating AI response: {e}")
+        say(text=f"Oops! Unable to get a response from OpenAI.", thread_ts=thread_ts)
     
     finally:
         try:
@@ -257,7 +284,7 @@ If the user asks a complex question, give a correct answer but phrase it like it
                 name="thought_balloon"
             )
         except Exception as e:
-            print("Unable to remove reaction")
+            logger.warning(f"Unable to remove reaction: {e}")
 
 
 # the fire starter
