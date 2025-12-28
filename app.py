@@ -22,10 +22,10 @@ OAI_KEY = os.getenv("OAI_KEY")
 MODERATION_BASE_URL = os.getenv("MODERATION_BASE_URL")
 MODERATION_KEY = os.getenv("MODERATION_KEY")
 LLM_MODEL = os.getenv("LLM_MODEL")
+PADLET_URL = os.getenv("PADLET_URL")
+CM_USER_ID = os.getenv("CM_USER_ID")
 
 # Constants
-PADLET_URL = os.getenv("PADLET_URL", "https://padlet.com/vvvrrrrvrr/alex-s-ideas-and-things-s4nym2jtp3dthauj")
-ALEX_USER_ID = os.getenv("ALEX_USER_ID", "U09PHG7RLGG")
 HTTP_TIMEOUT = 10  # seconds
 MAX_CONVERSATION_HISTORY = 10
 
@@ -140,7 +140,7 @@ def handle_ping_alex(ack, body, client):
     
     client.chat_postMessage(
         channel = channel_id,
-        text=f"<@{ALEX_USER_ID}>! You have been summoned by <@{clicker}>"
+        text=f"<@{CM_USER_ID}>! You have been summoned by <@{clicker}>"
     )
 
 @app.command("/padlet")
@@ -179,6 +179,8 @@ def fact_of_the_day(ack, say, command, event):
     try:
         response = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/today", timeout=HTTP_TIMEOUT)
         response.raise_for_status()
+        data = response.json()
+        fact = data.get('text', 'No fact available')
     except requests.RequestException as e:
         logger.error(f"Failed to fetch fact of the day: {e}")
         say({
@@ -194,9 +196,21 @@ def fact_of_the_day(ack, say, command, event):
             ]
         })
         return
-
-    data = response.json()
-    fact = data.get('text', 'No fact available')
+    except ValueError as e:
+        logger.error(f"Failed to parse fact response: {e}")
+        say({
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Sorry, I couldn't fetch a fact right now. Please try again later.",
+                        "emoji": True
+                    }
+                }
+            ]
+        })
+        return
 
     say(
         {
@@ -222,7 +236,7 @@ def fact_of_the_day(ack, say, command, event):
     )
 
 @app.event("app_mention")
-def ai_mention(client, event, say, logger):
+def ai_mention(client, event, say):
     user_msg = event['text']
     thread_ts = event.get("thread_ts", event["ts"])
     channel_id = event["channel"]
