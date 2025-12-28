@@ -133,8 +133,8 @@ def handle_ping_alex(ack, body, client):
 
 @app.command("/padlet")
 def handle_padlet_cmd(ack, respond, command):
- ack()
- blocks = [
+    ack()
+    blocks = [
         {
             "type": "section",
             "text": {
@@ -158,55 +158,56 @@ def handle_padlet_cmd(ack, respond, command):
             ]
         }
     ]
- 
- respond(blocks=blocks)
+    
+    respond(blocks=blocks)
 
 @app.command("/factoftheday")
-def fact_of_the_day(ack, say, command, event):
- ack()
- try:
-  response = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/today", timeout=HTTP_TIMEOUT)
-  response.raise_for_status()
- except requests.RequestException as e:
-  say({
-      "blocks": [
-          {
-              "type": "section",
-              "text": {
-                  "type": "plain_text",
-                  "text": "Sorry, I couldn't fetch a fact right now. Please try again later.",
-                  "emoji": True
-              }
-          }
-      ]
-  })
-  return
+def fact_of_the_day(ack, say, command, event, logger):
+    ack()
+    try:
+        response = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/today", timeout=HTTP_TIMEOUT)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch fact of the day: {e}")
+        say({
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Sorry, I couldn't fetch a fact right now. Please try again later.",
+                        "emoji": True
+                    }
+                }
+            ]
+        })
+        return
 
- data = response.json()
- fact = data.get('text', 'No fact available')
+    data = response.json()
+    fact = data.get('text', 'No fact available')
 
- say(
-    {
-	    "blocks": [
-		{
-			"type": "section",
-			"text": {
-				"type": "plain_text",
-				"text": "Here is your fact for today.",
-				"emoji": True
-			}
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "plain_text",
-				"text": f"{fact}",
-				"emoji": True
-			}
-		}
-	]
-}
- )
+    say(
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Here is your fact for today.",
+                        "emoji": True
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "plain_text",
+                        "text": f"{fact}",
+                        "emoji": True
+                    }
+                }
+            ]
+        }
+    )
 
 @app.event("app_mention")
 def ai_mention(client, event, say, logger):
