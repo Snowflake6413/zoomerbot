@@ -46,8 +46,13 @@ def get_bot_user_id(client):
     """Get bot user ID with caching to avoid repeated API calls."""
     global _bot_user_id_cache
     if _bot_user_id_cache is None:
-        bot_info = client.auth_test()
-        _bot_user_id_cache = bot_info["user_id"]
+        try:
+            bot_info = client.auth_test()
+            _bot_user_id_cache = bot_info["user_id"]
+        except Exception as e:
+            logging.error(f"Failed to get bot user ID: {e}")
+            # Return None to allow the caller to handle the error
+            return None
     return _bot_user_id_cache
 
 @app.event("member_joined_channel")
@@ -55,7 +60,8 @@ def welcome_to_the_channel(event, say, client):
     user_id = event["user"]
     bot_user_id = get_bot_user_id(client)
     
-    if user_id == bot_user_id:
+    # If we can't get bot user ID or if the user is the bot, skip
+    if bot_user_id is None or user_id == bot_user_id:
         return
     blocks = [
         
