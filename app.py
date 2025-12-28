@@ -24,8 +24,8 @@ MODERATION_KEY = os.getenv("MODERATION_KEY")
 LLM_MODEL = os.getenv("LLM_MODEL")
 
 # Constants
-PADLET_URL = "https://padlet.com/vvvrrrrvrr/alex-s-ideas-and-things-s4nym2jtp3dthauj"
-ALEX_USER_ID = "U09PHG7RLGG"
+PADLET_URL = os.getenv("PADLET_URL", "https://padlet.com/vvvrrrrvrr/alex-s-ideas-and-things-s4nym2jtp3dthauj")
+ALEX_USER_ID = os.getenv("ALEX_USER_ID", "U09PHG7RLGG")
 HTTP_TIMEOUT = 10  # seconds
 MAX_CONVERSATION_HISTORY = 10
 
