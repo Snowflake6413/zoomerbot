@@ -1,5 +1,6 @@
 import os
 import logging
+import threading
 from openai import OpenAI
 import requests
 from dotenv import load_dotenv
@@ -42,18 +43,22 @@ app = App(token=SLACK_BOT_TOKEN)
 
 # Cache bot user ID to avoid repeated API calls
 _bot_user_id_cache = None
+_bot_user_id_lock = threading.Lock()
 
 def get_bot_user_id(client):
     """Get bot user ID with caching to avoid repeated API calls."""
     global _bot_user_id_cache
     if _bot_user_id_cache is None:
-        try:
-            bot_info = client.auth_test()
-            _bot_user_id_cache = bot_info["user_id"]
-        except Exception as e:
-            logger.error(f"Failed to get bot user ID: {e}")
-            # Return None to allow the caller to handle the error
-            return None
+        with _bot_user_id_lock:
+            # Double-check after acquiring lock
+            if _bot_user_id_cache is None:
+                try:
+                    bot_info = client.auth_test()
+                    _bot_user_id_cache = bot_info["user_id"]
+                except Exception as e:
+                    logger.error(f"Failed to get bot user ID: {e}")
+                    # Return None to allow the caller to handle the error
+                    return None
     return _bot_user_id_cache
 
 @app.event("member_joined_channel")
@@ -169,7 +174,7 @@ def handle_padlet_cmd(ack, respond, command):
     respond(blocks=blocks)
 
 @app.command("/factoftheday")
-def fact_of_the_day(ack, say, command, event, logger):
+def fact_of_the_day(ack, say, command, event):
     ack()
     try:
         response = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/today", timeout=HTTP_TIMEOUT)
